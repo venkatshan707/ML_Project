@@ -1,5 +1,5 @@
 import sys  # Import the sys module to interact with the Python runtime environment
-from logger import logging  # Import the logging object from the src.logger module for logging purposes
+from src.logger import logging  # Import the logging object from the src.logger module for logging purposes
 
 def error_message_detail(error, error_detail: sys):
     """
