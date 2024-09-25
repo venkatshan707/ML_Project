@@ -15,12 +15,12 @@ def error_message_detail(error, error_detail: sys):
     # Retrieve exception type, value, and traceback from the current exception context
     _, _, exc_tb = error_detail.exc_info()
     
-    print (f"error detail :{error_detail.exc_info()}")
+    # print (f"error detail :{error_detail.exc_info()}")
     
     # Extract the filename where the exception occurred from the traceback object
     file_name = exc_tb.tb_frame.f_code.co_filename
 
-    print (f"exe_tb :{exc_tb.tb_frame}")
+    # print (f"exe_tb :{exc_tb.tb_frame}")
     
     # Extract the line number in the file where the exception occurred
     line_number = exc_tb.tb_lineno
@@ -63,7 +63,7 @@ class CustomException(Exception):
         
         The logging module internally calls str(msg).
         When str(msg) is called, Python looks for the __str__() method in the CustomException class 
-        and calls it.      
+        and calls it. str(msg) not going typing using default string conversion.  
 
         __str__(): The __str__() method, on the other hand, is specifically designed to define what should be 
         returned when an object is converted to a string (e.g., when you print it). 
@@ -73,15 +73,16 @@ class CustomException(Exception):
         return self.error_message  # Return the detailed error message when the exception is printed
 
 
-try :
-    a=10
-    b=a/0
-except Exception as e:
-    msg =CustomException(e, sys)
+# try :
+#     a=10
+#     b=a/0
+# except Exception as e:
+#     msg =CustomException(e, sys)
 
-    """
-    Python tries to log the object msg. To do this, 
-    it first needs to convert the msg object into a string (since log messages are always strings)
-    """
-    logging.info(msg)
+#     """
+#     Python tries to log the object msg. To do this, 
+#     it first needs to convert the msg object into a string (since log messages are always strings)
+#
+#     """
+#     logging.info(msg) # Message we are logging, we got that from __str__() methods return. 
     
