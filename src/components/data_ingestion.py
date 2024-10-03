@@ -2,6 +2,8 @@ import os
 import sys
 from src.exception import CustomException
 from src.logger import logging
+from src.components.data_transformation import DataTransformation
+from src.components.model_trainer import ModelTrainer
 
 import pandas as pd
 
@@ -11,9 +13,13 @@ from dataclasses import dataclass
 
 @dataclass
 class DataIngestionConfig :
-    train_data_path = os.path.join('artifacts', 'train.csv')
-    test_data_path = os.path.join('artifacts', 'test.csv')
-    raw_data_path = os.path.join('artifacts', 'raw.csv')
+    train_data_path : str = os.path.join('artifacts', 'train.csv')
+    """
+    This line includes type annotation (: str), which explicitly tells Python (or any developer reading the code)
+    that train_data_path is expected to be a string.
+    """
+    test_data_path : str = os.path.join('artifacts', 'test.csv')
+    raw_data_path : str= os.path.join('artifacts', 'raw.csv')
 
 class DataIngestion:
     def __init__(self):
@@ -47,5 +53,12 @@ class DataIngestion:
             raise CustomException(e, sys)  
 if __name__ == "__main__":
     obj = DataIngestion()
-    obj.initiate_data_ingestion()
+    train_data, test_data= obj.initiate_data_ingestion()
+
+    data_tranfermation = DataTransformation()
+    train_arr, test_arr, _= data_tranfermation.initiate_data_transformation(train_data, test_data)
+
+    modelTrainer = ModelTrainer ()
+    print (modelTrainer.initiate_model_trainer(train_arr, test_arr))
+
 

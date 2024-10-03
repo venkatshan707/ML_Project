@@ -86,7 +86,7 @@ class DataTransformation:
             raise CustomException(e, sys)
 
     # Method to initiate data transformation for training and testing data
-    def initiate_data_transformation(self, train_path, test_path):
+    def initiate_data_transformation(self, train_path, test_path):   
         try:
             # Load training and testing data from CSV files
             train_df = pd.read_csv(train_path)
