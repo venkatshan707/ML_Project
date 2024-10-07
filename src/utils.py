@@ -45,8 +45,11 @@ def train_and_evaluate_models(X_train, y_train,X_test,y_test,models,param):
             train_model_score = r2_score(y_train, y_train_pred)
 
             test_model_score = r2_score(y_test, y_test_pred)
-            print (f"Best model for our data :{model}")
-            print(f"Best params for our data :{gs.best_params_}")
+            print()
+            print( f"Currently Trained Model :{model}".center(100, "="))
+            
+            print(f"Best params for the current model :{gs.best_params_}")
+            
 
             report[list(models.keys())[i]] = test_model_score
 

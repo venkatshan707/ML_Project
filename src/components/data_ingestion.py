@@ -59,6 +59,6 @@ if __name__ == "__main__":
     train_arr, test_arr, _= data_tranfermation.initiate_data_transformation(train_data, test_data)
 
     modelTrainer = ModelTrainer ()
-    print (modelTrainer.initiate_model_trainer(train_arr, test_arr))
+    print (f"Best test accury {modelTrainer.initiate_model_trainer(train_arr, test_arr)}")
 
 
