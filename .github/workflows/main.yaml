@@ -1,68 +1,98 @@
-name: workflow # Giving a name to the GitHub Actions workflow, named 'workflow'.
+name: workflow
 
-on: # Defines the event that triggers the workflow.
-  push: # When code is pushed to the 'main' branch, the workflow will run.
+on:
+  push:
     branches:
-      - main # Specifies that only pushes to the 'main' branch will trigger the workflow.
+      - main
     paths-ignore:
-      - 'README.md'  # The 'README.md' file is ignored, so changes to it will not trigger the workflow.
+      - 'README.md'
 
-permissions: # Specifies the permissions for the GitHub Actions workflow.
-  id-token: write # Allows the workflow to write ID tokens (used for authentication).
-  contents: read  # Allows the workflow to read the repository contents.
+permissions:
+  id-token: write
+  contents: read
 
-jobs: # Defines the jobs in the workflow.
+jobs:
+  integration:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-  integration: # First job: Continuous Integration, runs tests and ensures code quality.
-    name: Continuous Integration # Name of the job.
-    runs-on: ubuntu-latest # Specifies the runner environment (Ubuntu) for running this job.
-    steps: # Steps executed in this job.
-      - name: Checkout Code # Step to checkout (download) the repository code into the runner (VM).
-        uses: actions/checkout@v3 # GitHub-provided action to check out the repository.
+      - name: Lint code
+        run: echo "Linting repository"
 
-      - name: Lint code # Step to lint the code (could be configured to use a linter).
-        run: echo "Linting repository" # Simple placeholder command to simulate linting.
+      - name: Run unit tests
+        run: echo "Running unit tests"
 
-      - name: Run unit tests # Step to run unit tests (could be configured to use a test framework like PyTest).
-        run: echo "Running unit tests" # Simple placeholder command to simulate unit testing.
+  build-and-push-ecr-image:
+    name: Continuous Delivery
+    needs: integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-  build-and-push-ecr-image: # Second job: Continuous Delivery, which builds and pushes a Docker image to Amazon ECR.
-    name: Continuous Delivery # Name of the job.
-    needs: integration # This job depends on the 'integration' job to complete successfully before starting.
-    runs-on: ubuntu-latest # Specifies the runner environment (Ubuntu) for running this job.
-    steps: # Steps executed in this job.
-      - name: Checkout Code # Step to checkout the repository code again.
-        uses: actions/checkout@v3 # GitHub-provided action to check out the repository.
-
-      - name: Install Utilities # Step to install required utilities such as jq and unzip.
+      - name: Install Utilities
         run: |
           sudo apt-get update
           sudo apt-get install -y jq unzip
-
-      - name: Configure AWS credentials # Step to configure AWS credentials for authenticating with AWS services.
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # AWS access key ID from GitHub secrets.
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # AWS secret access key from GitHub secrets.
-          aws-region: ${{ secrets.AWS_REGION }} # AWS region (e.g., us-east-1) from GitHub secrets.
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to Amazon ECR # Step to log in to Amazon ECR for pushing Docker images.
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build, tag, and push image to Amazon ECR # Step to build the Docker image and push it to Amazon ECR.
+      - name: Build, tag, and push image to Amazon ECR
         id: build-image
-        env: # Environment variables for ECR registry and repository.
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # The registry URL after logging into ECR.
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }} # The ECR repository name from GitHub secrets.
-          IMAGE_TAG: latest # The tag for the Docker image (set to 'latest').
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
+          IMAGE_TAG: latest
         run: |
-          # Build the Docker image with the repository and tag it.
+          # Build a docker container and
+          # push it to ECR so that it can
+          # be deployed to ECS.
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          # Push the built Docker image to ECR.
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          # Set the image as an output variable to be used later.
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          
+          
+  Continuous-Deployment:
+    needs: build-and-push-ecr-image
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
 
-  Continuous-Deployment: # Third job: Continuous Deployment, deploys the Docker image to a server.
-    needs: build-and-push-ecr-image # This job depends on the
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      
+      - name: Pull latest images
+        run: |
+         docker pull ${{secrets.AWS_ECR_LOGIN_URI}}/${{ secrets.ECR_REPOSITORY_NAME }}:latest
+         
+      # - name: Stop and remove  container if running
+      #   run: |
+      #    docker ps -q --filter "name=mltest" | grep -q . && docker stop mltest && docker rm -fv mltest
+       
+      - name: Run Docker Image to serve users
+        run: |
+         docker run -d -p 8080:8080 --ipc="host" --name=mltest -e 'AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}' -e 'AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}' -e 'AWS_REGION=${{ secrets.AWS_REGION }}'  ${{secrets.AWS_ECR_LOGIN_URI}}/${{ secrets.ECR_REPOSITORY_NAME }}:latest
+      - name: Clean previous images and containers
+        run: |
+         docker system prune -f

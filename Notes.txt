@@ -1,0 +1,27 @@
+On Amazon Linux 2023 (or Amazon Linux 2, but without extras enabled). The method to install Docker in Amazon Linux 2023. 
+
+# Step 1: Update the linux package index to ensure the latest package info is available.
+sudo yum update -y
+
+# Step 2: Install Docker on Amazon Linux 2023.
+sudo yum install docker -y
+
+# Step 3: Start the Docker service so that Docker is running and ready to use.
+sudo systemctl start docker
+
+# Step 4: Enable Docker to start automatically on boot.
+sudo systemctl enable docker
+
+# Step 5: Add the current user to the Docker group.
+# This allows the user to run Docker commands without 'sudo'.
+sudo usermod -aG docker $USER
+
+# Step 6: Apply the group changes immediately without logging out and back in.
+newgrp docker
+
+# Step 7: Check that Docker has been installed correctly by showing the installed version.
+docker --version
+
+# Step 8: Test Docker by running a hello-world container.
+# This will check that Docker is installed and working correctly.
+docker run hello-world
